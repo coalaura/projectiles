@@ -1,0 +1,30 @@
+{
+	"schemaVersion": 1,
+	"id": "projectiles",
+	"version": "${version}",
+	"name": "Projectiles",
+	"description": "View your projectiles paths before shooting them.",
+	"authors": [
+		"coalaura"
+	],
+	"contact": {
+		"sources": "https://github.com/coalaura/projectiles"
+	},
+	"license": "CC0-1.0",
+	"icon": "assets/projectiles/icon.png",
+	"environment": "client",
+	"entrypoints": {
+		"client": [
+			"org.wiese2.Projectiles"
+		]
+	},
+	"mixins": [
+		"projectiles.mixins.json"
+	],
+	"depends": {
+		"fabricloader": ">=0.19.2",
+		"minecraft": "~1.21.10",
+		"java": ">=21",
+		"fabric-api": "*"
+	}
+}

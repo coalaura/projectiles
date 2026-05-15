@@ -1,0 +1,14 @@
+{
+	"required": true,
+	"package": "org.wiese2.mixin",
+	"compatibilityLevel": "JAVA_21",
+	"client": [
+		"ProjectilesMixin"
+	],
+	"injectors": {
+		"defaultRequire": 1
+	},
+	"overwrites": {
+		"requireAnnotations": true
+	}
+}
