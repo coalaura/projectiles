@@ -4,8 +4,12 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 
+import org.lwjgl.glfw.GLFW;
+
 import net.fabricmc.api.ClientModInitializer;
 import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents;
+import net.fabricmc.fabric.api.client.keybinding.v1.KeyBindingHelper;
+import net.minecraft.client.KeyMapping;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.player.LocalPlayer;
 import net.minecraft.util.Mth;
@@ -31,21 +35,37 @@ public class Projectiles implements ClientModInitializer {
 	public static final List<Vec3> trajectoryPoints = new ArrayList<>();
 	public static HitResult hitResult = null;
 
+	public static KeyMapping visibilityKey;
+	public static boolean isVisible = false;
+
 	@Override
 	public void onInitializeClient() {
+		visibilityKey = KeyBindingHelper.registerKeyBinding(new KeyMapping(
+				"key.projectiles.visibility",
+				GLFW.GLFW_KEY_LEFT_ALT,
+				KeyMapping.Category.MISC));
+
 		ClientTickEvents.END_CLIENT_TICK.register(client -> calculateTrajectory(client));
 	}
 
 	private static void calculateTrajectory(Minecraft client) {
 		trajectoryPoints.clear();
-
 		hitResult = null;
 
-		LocalPlayer player = client.player;
-
-		if (player == null) {
+		if (client.player == null) {
 			return;
 		}
+
+		isVisible = visibilityKey.isDown();
+
+		while (visibilityKey.consumeClick()) {
+		}
+
+		if (!isVisible) {
+			return;
+		}
+
+		LocalPlayer player = client.player;
 
 		ItemStack stack = player.getMainHandItem();
 		Item item = stack.getItem();
@@ -54,8 +74,9 @@ public class Projectiles implements ClientModInitializer {
 			stack = player.getOffhandItem();
 			item = stack.getItem();
 
-			if (!isProjectileItem(item))
+			if (!isProjectileItem(item)) {
 				return;
+			}
 		}
 
 		float speed = 1.5f;
