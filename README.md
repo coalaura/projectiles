@@ -2,8 +2,8 @@
 
 A client-side Fabric mod that allows you to view the path of your projectiles before you shoot them.
 
-![Aiming at a block](.github/block.png)
-![Aiming at an entity](.github/entity.png)
+![Aiming at a block](https://github.com/coalaura/projectiles/.github/block.png)
+![Aiming at an entity](https://github.com/coalaura/projectiles/.github/entity.png)
 
 ## Features
 
