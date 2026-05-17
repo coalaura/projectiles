@@ -21,7 +21,7 @@ The keybind can be changed in the Minecraft controls menu under the "Misc" categ
 ## Installation
 
 1. Install [Fabric Loader](https://fabricmc.net/) for Minecraft 1.21.10.
-2. Download the [Fabric API](https://modrinth.com/mod/fabric-api) mod.
+2. Download the [Fabric API](https://modrinth.com/mod/fabric-api?version=1.21.10) mod.
 3. Download the latest compiled `.jar` from the [Releases](https://github.com/coalaura/projectiles/releases) page.
 4. Place both `.jar` files into your `.minecraft/mods` folder.
 
