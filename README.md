@@ -30,7 +30,6 @@ The keybind can be changed in the Minecraft controls menu under the "Misc" categ
 - Minecraft 1.21.10
 - Fabric Loader 0.19.2+
 - Fabric API
-- Java 21+
 
 ## License
 
