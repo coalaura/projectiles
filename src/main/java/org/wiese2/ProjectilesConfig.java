@@ -13,7 +13,18 @@ public class ProjectilesConfig {
 	private static final Gson GsonBuilder = new GsonBuilder().setPrettyPrinting().create();
 	private static final Path ConfigPath = FabricLoader.getInstance().getConfigDir().resolve("projectiles.json");
 
+	public enum VisibilityMode {
+		HOLD, TOGGLE, ALWAYS
+	}
+
+	public enum LineThickness {
+		THIN, NORMAL, THICK
+	}
+
 	public boolean immersiveColors = false;
+	public VisibilityMode visibilityMode = VisibilityMode.HOLD;
+	public boolean showHitboxes = true;
+	public LineThickness lineThickness = LineThickness.NORMAL;
 
 	public ProjectilesConfig() {
 		load();
@@ -25,6 +36,16 @@ public class ProjectilesConfig {
 				ProjectilesConfig loaded = GsonBuilder.fromJson(Files.readString(ConfigPath), ProjectilesConfig.class);
 
 				this.immersiveColors = loaded.immersiveColors;
+
+				if (loaded.visibilityMode != null) {
+					this.visibilityMode = loaded.visibilityMode;
+				}
+
+				this.showHitboxes = loaded.showHitboxes;
+
+				if (loaded.lineThickness != null) {
+					this.lineThickness = loaded.lineThickness;
+				}
 			} catch (Exception e) {
 				// ignored, keep defaults
 			}

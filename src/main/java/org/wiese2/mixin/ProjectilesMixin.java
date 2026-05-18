@@ -31,7 +31,6 @@ import net.minecraft.world.phys.shapes.VoxelShape;
 @Mixin(LevelRenderer.class)
 public class ProjectilesMixin {
 
-	private static final float TrajectoryThickness = 0.025f;
 	private static final float HitboxThickness = 0.05f;
 
 	@Inject(method = "renderLevel", at = @At("RETURN"))
@@ -102,8 +101,7 @@ public class ProjectilesMixin {
 		Vec3 handToEyeDelta = right.scale(handMultiplier * offset.x).add(up.scale(offset.y))
 				.add(forward.scale(offset.z)).add(eye.subtract(startPos));
 
-		int[] trajectoryColor = Projectiles.trajectoryColor;
-		int[] hitboxColor = trajectoryColor;
+		int[] color = Projectiles.color;
 
 		AABB box = null;
 
@@ -113,7 +111,7 @@ public class ProjectilesMixin {
 
 			box = shape.isEmpty() ? new AABB(blockHit.getBlockPos()) : shape.bounds().move(blockHit.getBlockPos());
 		} else if (Projectiles.hitResult instanceof EntityHitResult entityHit) {
-			hitboxColor = Projectiles.EntityColor;
+			color = Projectiles.EntityColor;
 
 			Entity entity = entityHit.getEntity();
 
@@ -129,6 +127,12 @@ public class ProjectilesMixin {
 			box = new AABB(-w - r, -r, -w - r, w + r, h + r, w + r).move(lerpedPos);
 		}
 
+		float trajectoryThickness = switch (Projectiles.config.lineThickness) {
+			case THIN -> 0.015f;
+			case NORMAL -> 0.025f;
+			case THICK -> 0.045f;
+		};
+
 		int size = Projectiles.trajectoryPoints.size();
 
 		for (int i = 0; i < size - 1; i++) {
@@ -141,18 +145,17 @@ public class ProjectilesMixin {
 			float progress = i / (float) (size - 1);
 			int alpha = (int) Mth.lerp(progress, 255, 192);
 
-			addTrajectorySegment(lineBuilder, matrix, p1, p2, TrajectoryThickness, trajectoryColor[0],
-					trajectoryColor[1], trajectoryColor[2], alpha, camera);
+			addTrajectorySegment(lineBuilder, matrix, p1, p2, trajectoryThickness, color[0], color[1], color[2], alpha,
+					camera);
 		}
 
 		bufferSource.endBatch(lineType);
 
-		if (box != null) {
+		if (Projectiles.config.showHitboxes && box != null) {
 			RenderType outlineType = ProjectilesRenderTypes.HITBOX_OUTLINE;
 			VertexConsumer outlineBuilder = bufferSource.getBuffer(outlineType);
 
-			addBoxOutline(outlineBuilder, matrix, box, hitboxColor[0], hitboxColor[1], hitboxColor[2], 224,
-					HitboxThickness, camera);
+			addBoxOutline(outlineBuilder, matrix, box, color[0], color[1], color[2], 224, HitboxThickness, camera);
 
 			bufferSource.endBatch(outlineType);
 		}

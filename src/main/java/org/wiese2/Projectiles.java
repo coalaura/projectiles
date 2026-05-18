@@ -15,6 +15,9 @@ import net.minecraft.client.player.LocalPlayer;
 import net.minecraft.core.component.DataComponents;
 import net.minecraft.util.Mth;
 import net.minecraft.world.entity.Entity;
+import net.minecraft.world.entity.ExperienceOrb;
+import net.minecraft.world.entity.item.ItemEntity;
+import net.minecraft.world.entity.projectile.Projectile;
 import net.minecraft.world.item.BowItem;
 import net.minecraft.world.item.CrossbowItem;
 import net.minecraft.world.item.EggItem;
@@ -26,6 +29,7 @@ import net.minecraft.world.item.SnowballItem;
 import net.minecraft.world.item.ThrowablePotionItem;
 import net.minecraft.world.item.TridentItem;
 import net.minecraft.world.item.alchemy.PotionContents;
+import net.minecraft.world.item.component.ChargedProjectiles;
 import net.minecraft.world.level.ClipContext;
 import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.EntityHitResult;
@@ -46,7 +50,8 @@ public class Projectiles implements ClientModInitializer {
 	public static KeyMapping visibilityKey;
 
 	public static boolean isVisible = false;
-	public static int[] trajectoryColor = BlockColor;
+	public static boolean isToggled = false;
+	public static int[] color = BlockColor;
 
 	@Override
 	public void onInitializeClient() {
@@ -64,9 +69,26 @@ public class Projectiles implements ClientModInitializer {
 			return;
 		}
 
-		isVisible = visibilityKey.isDown();
+		switch (config.visibilityMode) {
+			case ALWAYS -> {
+				isVisible = true;
 
-		while (visibilityKey.consumeClick()) {
+				while (visibilityKey.consumeClick()) {
+				}
+			}
+			case TOGGLE -> {
+				while (visibilityKey.consumeClick()) {
+					isToggled = !isToggled;
+				}
+
+				isVisible = isToggled;
+			}
+			case HOLD -> {
+				isVisible = visibilityKey.isDown();
+
+				while (visibilityKey.consumeClick()) {
+				}
+			}
 		}
 
 		if (!isVisible) {
@@ -88,9 +110,9 @@ public class Projectiles implements ClientModInitializer {
 		}
 
 		if (config.immersiveColors) {
-			trajectoryColor = getItemColor(stack);
+			color = getItemColor(stack);
 		} else {
-			trajectoryColor = new int[] { 90, 125, 235 };
+			color = new int[] { 90, 125, 235 };
 		}
 
 		float speed = 1.5f;
@@ -114,6 +136,12 @@ public class Projectiles implements ClientModInitializer {
 				return;
 			}
 		} else if (item instanceof CrossbowItem) {
+			ChargedProjectiles projectiles = stack.get(DataComponents.CHARGED_PROJECTILES);
+
+			if (projectiles == null || projectiles.isEmpty()) {
+				return;
+			}
+
 			speed = 3.15f;
 			gravity = 0.05f;
 		} else if (item instanceof TridentItem) {
@@ -172,7 +200,7 @@ public class Projectiles implements ClientModInitializer {
 			AABB box = new AABB(pos, nextPos).inflate(1.0);
 
 			List<Entity> entities = player.level().getEntitiesOfClass(Entity.class, box,
-					entity -> !entity.isSpectator() && entity.isAlive() && entity != player);
+					entity -> isValidEntity(entity, player));
 
 			Entity hitEntity = null;
 			Vec3 entityHitPos = null;
@@ -245,6 +273,18 @@ public class Projectiles implements ClientModInitializer {
 				|| item instanceof EggItem
 				|| item instanceof EnderpearlItem
 				|| item instanceof ThrowablePotionItem;
+	}
+
+	private static boolean isValidEntity(Entity entity, LocalPlayer player) {
+		if (entity == player) {
+			return false;
+		}
+
+		if (entity.isSpectator() || !entity.isAlive()) {
+			return false;
+		}
+
+		return !(entity instanceof ItemEntity) && !(entity instanceof Projectile) && !(entity instanceof ExperienceOrb);
 	}
 
 	private static int[] getItemColor(ItemStack stack) {
