@@ -9,6 +9,7 @@ A client-side Fabric mod that allows you to view the path of your projectiles be
 
 - Calculates and renders the exact trajectory of your projectile.
 - Dynamically highlights the predicted impact point (blue for blocks, red for entities).
+- Optional **Immersive Colors** setting to color-match the trajectory line to the projectile (e.g., teal for tridents, green for ender pearls).
 - Supports bows, crossbows, tridents, snowballs, eggs, ender pearls and splash potions.
 - Fully client-side; works perfectly on multiplayer servers.
 
@@ -17,6 +18,10 @@ A client-side Fabric mod that allows you to view the path of your projectiles be
 Hold `Left Alt` while holding a projectile item to display its predicted path.
 
 The keybind can be changed in the Minecraft controls menu under the "Misc" category.
+
+### Configuration
+
+Sightline supports [ModMenu](https://modrinth.com/mod/modmenu?version=1.21.10&loader=fabric) for in-game configuration. You can toggle the **Immersive Colors** setting from there, or manually edit the `config/projectiles.json` file.
 
 ## Installation
 
@@ -28,8 +33,9 @@ The keybind can be changed in the Minecraft controls menu under the "Misc" categ
 ## Requirements
 
 - Minecraft 1.21.10
-- Fabric Loader 0.19.2+
-- Fabric API
+- [Fabric Loader](https://fabricmc.net/) 0.19.2+
+- [Fabric API](https://modrinth.com/mod/fabric-api?version=1.21.10)
+- [ModMenu](https://modrinth.com/mod/modmenu?version=1.21.10&loader=fabric) (Optional, for in-game configuration)
 
 ## License
 

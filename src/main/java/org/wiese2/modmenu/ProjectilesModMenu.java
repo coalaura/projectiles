@@ -42,7 +42,10 @@ public class ProjectilesModMenu implements ModMenuApi {
 			int buttonW = 150;
 			int buttonH = 20;
 			int rowY = 60;
-			int buttonX = this.width - buttonW - 20;
+
+			int contentW = buttonW * 2 + 10;
+			int startX = (this.width - contentW) / 2;
+			int buttonX = startX + contentW - buttonW;
 
 			addRenderableWidget(Button.builder(getToggleText(immersiveColors), btn -> {
 				immersiveColors = !immersiveColors;
@@ -53,8 +56,6 @@ public class ProjectilesModMenu implements ModMenuApi {
 			}).bounds(buttonX, rowY, buttonW, buttonH).build());
 
 			int bottomY = this.height - 30;
-			int totalW = buttonW * 2 + 10;
-			int startX = (this.width - totalW) / 2;
 
 			addRenderableWidget(Button.builder(Component.literal("Cancel"), btn -> {
 				Projectiles.config.immersiveColors = originalImmersiveColors;
@@ -81,9 +82,12 @@ public class ProjectilesModMenu implements ModMenuApi {
 		public void render(GuiGraphics graphics, int mouseX, int mouseY, float delta) {
 			super.render(graphics, mouseX, mouseY, delta);
 
-			graphics.drawCenteredString(this.font, this.title, this.width / 2, 20, 0xFFFFFF);
+			graphics.drawCenteredString(this.font, this.title, this.width / 2, 20, 0xFFFFFFFF);
 
-			graphics.drawString(this.font, Component.literal("Immersive Colors"), 20, 60 + 6, 0xFFFFFF);
+			int contentW = 150 * 2 + 10;
+			int startX = (this.width - contentW) / 2;
+
+			graphics.drawString(this.font, Component.literal("Immersive Colors"), startX, 60 + 6, 0xFFFFFFFF);
 		}
 
 		@Override
