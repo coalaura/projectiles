@@ -18,6 +18,9 @@ import net.minecraft.client.renderer.RenderType;
 import net.minecraft.util.Mth;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.HumanoidArm;
+import net.minecraft.world.item.CrossbowItem;
+import net.minecraft.world.item.Item;
+import net.minecraft.world.item.TridentItem;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.BlockHitResult;
@@ -57,6 +60,20 @@ public class ProjectilesMixin {
 
 		int handMultiplier = mc.options.mainHand().get() == HumanoidArm.RIGHT ? 1 : -1;
 
+		Item mainItem = mc.player.getMainHandItem().getItem();
+		Item offItem = mc.player.getOffhandItem().getItem();
+
+		Item activeItem = mainItem;
+
+		boolean isOffhand = false;
+
+		if (!Projectiles.isProjectileItem(mainItem) && Projectiles.isProjectileItem(offItem)) {
+			activeItem = offItem;
+			handMultiplier = -handMultiplier;
+
+			isOffhand = true;
+		}
+
 		float yaw = (float) Math.toRadians(-mc.player.getViewYRot(tickDelta));
 		float pitch = (float) Math.toRadians(-mc.player.getViewXRot(tickDelta));
 
@@ -67,6 +84,16 @@ public class ProjectilesMixin {
 		Vec3 right = forward.cross(up).normalize();
 
 		Vec3 offset = new Vec3(0.2, -0.06, 0.2);
+
+		if (activeItem instanceof CrossbowItem) {
+			if (isOffhand) {
+				offset = new Vec3(0.4, -0.2, 0.3);
+			} else {
+				offset = new Vec3(0.0, -0.08, 0.12);
+			}
+		} else if (activeItem instanceof TridentItem) {
+			offset = new Vec3(0.3, 0.2, 0.2);
+		}
 
 		if (camera.isDetached()) {
 			offset = Vec3.ZERO;

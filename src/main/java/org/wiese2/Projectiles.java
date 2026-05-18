@@ -230,7 +230,7 @@ public class Projectiles implements ClientModInitializer {
 		}
 	}
 
-	private static boolean isProjectileItem(Item item) {
+	public static boolean isProjectileItem(Item item) {
 		return item instanceof BowItem ||
 				item instanceof CrossbowItem ||
 				item instanceof SnowballItem ||
