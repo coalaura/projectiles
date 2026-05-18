@@ -2,7 +2,7 @@
 	"schemaVersion": 1,
 	"id": "projectiles",
 	"version": "${version}",
-	"name": "Projectiles",
+	"name": "Sightline",
 	"description": "View your projectiles paths before shooting them.",
 	"authors": [
 		"coalaura"
@@ -16,6 +16,9 @@
 	"entrypoints": {
 		"client": [
 			"org.wiese2.Projectiles"
+		],
+		"modmenu": [
+			"org.wiese2.modmenu.ProjectilesModMenu"
 		]
 	},
 	"mixins": [

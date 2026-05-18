@@ -18,15 +18,15 @@ import net.minecraft.client.renderer.RenderType;
 import net.minecraft.util.Mth;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.HumanoidArm;
+import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.BlockHitResult;
 import net.minecraft.world.phys.EntityHitResult;
 import net.minecraft.world.phys.Vec3;
+import net.minecraft.world.phys.shapes.VoxelShape;
 
 @Mixin(LevelRenderer.class)
 public class ProjectilesMixin {
-	private static final int[] BlockColor = new int[] { 90, 125, 235 };
-	private static final int[] EntityColor = new int[] { 225, 70, 70 };
 
 	private static final float TrajectoryThickness = 0.025f;
 	private static final float HitboxThickness = 0.05f;
@@ -75,15 +75,18 @@ public class ProjectilesMixin {
 		Vec3 handToEyeDelta = right.scale(handMultiplier * offset.x).add(up.scale(offset.y))
 				.add(forward.scale(offset.z)).add(eye.subtract(startPos));
 
-		int[] color = null;
+		int[] trajectoryColor = Projectiles.trajectoryColor;
+		int[] hitboxColor = trajectoryColor;
+
 		AABB box = null;
 
 		if (Projectiles.hitResult instanceof BlockHitResult blockHit) {
-			color = BlockColor;
+			BlockState state = mc.level.getBlockState(blockHit.getBlockPos());
+			VoxelShape shape = state.getCollisionShape(mc.level, blockHit.getBlockPos());
 
-			box = new AABB(blockHit.getBlockPos());
+			box = shape.isEmpty() ? new AABB(blockHit.getBlockPos()) : shape.bounds().move(blockHit.getBlockPos());
 		} else if (Projectiles.hitResult instanceof EntityHitResult entityHit) {
-			color = EntityColor;
+			hitboxColor = Projectiles.EntityColor;
 
 			Entity entity = entityHit.getEntity();
 
@@ -111,8 +114,8 @@ public class ProjectilesMixin {
 			float progress = i / (float) (size - 1);
 			int alpha = (int) Mth.lerp(progress, 255, 192);
 
-			addTrajectorySegment(lineBuilder, matrix, p1, p2, TrajectoryThickness, color[0], color[1], color[2], alpha,
-					camera);
+			addTrajectorySegment(lineBuilder, matrix, p1, p2, TrajectoryThickness, trajectoryColor[0],
+					trajectoryColor[1], trajectoryColor[2], alpha, camera);
 		}
 
 		bufferSource.endBatch(lineType);
@@ -121,7 +124,8 @@ public class ProjectilesMixin {
 			RenderType outlineType = ProjectilesRenderTypes.HITBOX_OUTLINE;
 			VertexConsumer outlineBuilder = bufferSource.getBuffer(outlineType);
 
-			addBoxOutline(outlineBuilder, matrix, box, color[0], color[1], color[2], 224, HitboxThickness, camera);
+			addBoxOutline(outlineBuilder, matrix, box, hitboxColor[0], hitboxColor[1], hitboxColor[2], 224,
+					HitboxThickness, camera);
 
 			bufferSource.endBatch(outlineType);
 		}

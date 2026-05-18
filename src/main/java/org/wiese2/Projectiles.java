@@ -12,6 +12,7 @@ import net.fabricmc.fabric.api.client.keybinding.v1.KeyBindingHelper;
 import net.minecraft.client.KeyMapping;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.player.LocalPlayer;
+import net.minecraft.core.component.DataComponents;
 import net.minecraft.util.Mth;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.item.BowItem;
@@ -20,9 +21,11 @@ import net.minecraft.world.item.EggItem;
 import net.minecraft.world.item.EnderpearlItem;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.item.Items;
 import net.minecraft.world.item.SnowballItem;
 import net.minecraft.world.item.ThrowablePotionItem;
 import net.minecraft.world.item.TridentItem;
+import net.minecraft.world.item.alchemy.PotionContents;
 import net.minecraft.world.level.ClipContext;
 import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.EntityHitResult;
@@ -32,18 +35,23 @@ import net.minecraft.world.phys.Vec3;
 public class Projectiles implements ClientModInitializer {
 	public static final String ModId = "projectiles";
 
+	public static ProjectilesConfig config = new ProjectilesConfig();
+
+	public static final int[] BlockColor = new int[] { 90, 125, 235 };
+	public static final int[] EntityColor = new int[] { 225, 70, 70 };
+
 	public static final List<Vec3> trajectoryPoints = new ArrayList<>();
 	public static HitResult hitResult = null;
 
 	public static KeyMapping visibilityKey;
+
 	public static boolean isVisible = false;
+	public static int[] trajectoryColor = BlockColor;
 
 	@Override
 	public void onInitializeClient() {
-		visibilityKey = KeyBindingHelper.registerKeyBinding(new KeyMapping(
-				"key.projectiles.visibility",
-				GLFW.GLFW_KEY_LEFT_ALT,
-				KeyMapping.Category.MISC));
+		visibilityKey = KeyBindingHelper.registerKeyBinding(
+				new KeyMapping("key.projectiles.visibility", GLFW.GLFW_KEY_LEFT_ALT, KeyMapping.Category.MISC));
 
 		ClientTickEvents.END_CLIENT_TICK.register(client -> calculateTrajectory(client));
 	}
@@ -79,6 +87,12 @@ public class Projectiles implements ClientModInitializer {
 			}
 		}
 
+		if (config.immersiveColors) {
+			trajectoryColor = getItemColor(stack);
+		} else {
+			trajectoryColor = new int[] { 90, 125, 235 };
+		}
+
 		float speed = 1.5f;
 		float gravity = 0.03f;
 		float drag = 0.99f;
@@ -90,6 +104,7 @@ public class Projectiles implements ClientModInitializer {
 			}
 
 			int useTicks = 72000 - player.getUseItemRemainingTicks();
+
 			float pull = BowItem.getPowerForTime(useTicks);
 
 			speed = pull * 3.0f;
@@ -115,35 +130,53 @@ public class Projectiles implements ClientModInitializer {
 		}
 
 		float yaw = player.getYRot();
-		float pitch = player.getXRot() + pitchOffset;
+		float pitch = player.getXRot();
 
 		float x = -Mth.sin(yaw * Mth.DEG_TO_RAD) * Mth.cos(pitch * Mth.DEG_TO_RAD);
-		float y = -Mth.sin(pitch * Mth.DEG_TO_RAD);
+		float y = -Mth.sin((pitch + pitchOffset) * Mth.DEG_TO_RAD);
 		float z = Mth.cos(yaw * Mth.DEG_TO_RAD) * Mth.cos(pitch * Mth.DEG_TO_RAD);
 
 		Vec3 velocity = new Vec3(x, y, z).normalize().scale(speed);
 		Vec3 pos = player.getEyePosition().subtract(0, 0.1, 0);
 
+		// throwable inherits player velocity
+		boolean isThrowable = isThrowableItem(item);
+
+		if (isThrowable) {
+			Vec3 playerVel = player.getDeltaMovement();
+
+			if (player.onGround()) {
+				playerVel = new Vec3(playerVel.x, 0.0, playerVel.z);
+			}
+
+			velocity = velocity.add(playerVel);
+		}
+
 		trajectoryPoints.add(pos);
 
 		for (int i = 0; i < 200; i++) {
+			if (isThrowable) {
+				velocity = velocity.subtract(0, gravity, 0);
+			}
+
 			Vec3 nextPos = pos.add(velocity);
 
 			HitResult hit = player.level().clip(
 					new ClipContext(
 							pos,
 							nextPos,
-							ClipContext.Block.OUTLINE,
+							ClipContext.Block.COLLIDER,
 							ClipContext.Fluid.NONE,
 							player));
 
 			AABB box = new AABB(pos, nextPos).inflate(1.0);
-			List<Entity> entities = player.level().getEntitiesOfClass(
-					Entity.class, box,
+
+			List<Entity> entities = player.level().getEntitiesOfClass(Entity.class, box,
 					entity -> !entity.isSpectator() && entity.isAlive() && entity != player);
 
 			Entity hitEntity = null;
 			Vec3 entityHitPos = null;
+
 			double closestDist = Double.MAX_VALUE;
 
 			for (Entity entity : entities) {
@@ -153,6 +186,7 @@ public class Projectiles implements ClientModInitializer {
 
 				if (entityHit.isPresent()) {
 					double dist = pos.distanceToSqr(entityHit.get());
+
 					if (dist < closestDist) {
 						closestDist = dist;
 						hitEntity = entity;
@@ -169,7 +203,15 @@ public class Projectiles implements ClientModInitializer {
 
 				break;
 			} else if (hit != null && hit.getType() != HitResult.Type.MISS) {
-				trajectoryPoints.add(hit.getLocation());
+				Vec3 hitLoc = hit.getLocation();
+
+				if (isThrowable) {
+					Vec3 correction = pos.subtract(nextPos).normalize().scale(0.125);
+
+					hitLoc = hitLoc.add(correction);
+				}
+
+				trajectoryPoints.add(hitLoc);
 
 				hitResult = hit;
 
@@ -179,7 +221,12 @@ public class Projectiles implements ClientModInitializer {
 			trajectoryPoints.add(nextPos);
 
 			pos = nextPos;
-			velocity = velocity.scale(drag).subtract(0, gravity, 0);
+
+			if (!isThrowable) {
+				velocity = velocity.scale(drag).subtract(0, gravity, 0);
+			} else {
+				velocity = velocity.scale(drag);
+			}
 		}
 	}
 
@@ -191,5 +238,58 @@ public class Projectiles implements ClientModInitializer {
 				item instanceof EnderpearlItem ||
 				item instanceof ThrowablePotionItem ||
 				item instanceof TridentItem;
+	}
+
+	private static boolean isThrowableItem(Item item) {
+		return item instanceof SnowballItem
+				|| item instanceof EggItem
+				|| item instanceof EnderpearlItem
+				|| item instanceof ThrowablePotionItem;
+	}
+
+	private static int[] getItemColor(ItemStack stack) {
+		Item item = stack.getItem();
+
+		if (item instanceof ThrowablePotionItem) {
+			PotionContents contents = stack.getOrDefault(DataComponents.POTION_CONTENTS, PotionContents.EMPTY);
+
+			int color = contents.getColor();
+
+			return new int[] { (color >> 16) & 0xFF, (color >> 8) & 0xFF, color & 0xFF };
+		}
+
+		if (item instanceof EggItem) {
+			if (item == Items.BLUE_EGG) {
+				return new int[] { 180, 208, 188 }; // minty blue-green
+			}
+
+			if (item == Items.BROWN_EGG) {
+				return new int[] { 212, 116, 84 }; // warm terracotta
+			}
+
+			return new int[] { 204, 184, 140 }; // pale beige
+		}
+
+		if (item instanceof EnderpearlItem) {
+			return new int[] { 52, 156, 140 }; // deep sea green
+		}
+
+		if (item instanceof SnowballItem) {
+			return new int[] { 198, 226, 226 }; // icy cyan-white
+		}
+
+		if (item instanceof TridentItem) {
+			return new int[] { 90, 160, 140 }; // weathered teal
+		}
+
+		if (item instanceof CrossbowItem) {
+			return new int[] { 150, 95, 35 }; // dark wood/leather
+		}
+
+		if (item instanceof BowItem) {
+			return new int[] { 165, 125, 45 }; // oak wood
+		}
+
+		return BlockColor; // fallback blue
 	}
 }
