@@ -6,7 +6,6 @@ import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 import org.wiese2.Projectiles;
-import org.wiese2.ProjectilesRenderTypes;
 
 import com.mojang.blaze3d.vertex.VertexConsumer;
 
@@ -15,6 +14,8 @@ import net.minecraft.client.Minecraft;
 import net.minecraft.client.renderer.LevelRenderer;
 import net.minecraft.client.renderer.MultiBufferSource.BufferSource;
 import net.minecraft.client.renderer.RenderType;
+import net.minecraft.client.renderer.texture.OverlayTexture;
+import net.minecraft.resources.ResourceLocation;
 import net.minecraft.util.Mth;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.HumanoidArm;
@@ -33,7 +34,7 @@ public class ProjectilesMixin {
 
 	private static final float HitboxThickness = 0.05f;
 
-	@Inject(method = "renderLevel", at = @At("RETURN"))
+	@Inject(method = "renderLevel", at = @At("HEAD"))
 	private void renderTrajectory(CallbackInfo ci) {
 		if (Projectiles.trajectoryPoints.size() < 2) {
 			return;
@@ -42,15 +43,14 @@ public class ProjectilesMixin {
 		Minecraft mc = Minecraft.getInstance();
 
 		Camera camera = mc.gameRenderer.getMainCamera();
-		Vec3 cameraPos = camera.getPosition();
 
-		Matrix4f matrix = new Matrix4f()
-				.rotation(new org.joml.Quaternionf(camera.rotation()).invert())
-				.translate((float) -cameraPos.x, (float) -cameraPos.y, (float) -cameraPos.z);
+		Matrix4f matrix = new Matrix4f();
 
-		RenderType lineType = ProjectilesRenderTypes.TRAJECTORY;
+		RenderType renderType = RenderType
+				.entityTranslucent(ResourceLocation.parse("minecraft:textures/block/white_concrete.png"), true);
+
 		BufferSource bufferSource = mc.renderBuffers().bufferSource();
-		VertexConsumer lineBuilder = bufferSource.getBuffer(lineType);
+		VertexConsumer lineBuilder = bufferSource.getBuffer(renderType);
 
 		float tickDelta = mc.getDeltaTracker().getGameTimeDeltaPartialTick(false);
 
@@ -133,6 +133,9 @@ public class ProjectilesMixin {
 			case THICK -> 0.045f;
 		};
 
+		int overlay = OverlayTexture.NO_OVERLAY;
+		int light = 15728880;
+
 		int size = Projectiles.trajectoryPoints.size();
 
 		for (int i = 0; i < size - 1; i++) {
@@ -146,23 +149,17 @@ public class ProjectilesMixin {
 			int alpha = (int) Mth.lerp(progress, 255, 192);
 
 			addTrajectorySegment(lineBuilder, matrix, p1, p2, trajectoryThickness, color[0], color[1], color[2], alpha,
-					camera);
+					overlay, light, camera);
 		}
 
-		bufferSource.endBatch(lineType);
-
 		if (Projectiles.config.showHitboxes && box != null) {
-			RenderType outlineType = ProjectilesRenderTypes.HITBOX_OUTLINE;
-			VertexConsumer outlineBuilder = bufferSource.getBuffer(outlineType);
-
-			addBoxOutline(outlineBuilder, matrix, box, color[0], color[1], color[2], 224, HitboxThickness, camera);
-
-			bufferSource.endBatch(outlineType);
+			addBoxOutline(lineBuilder, matrix, box, color[0], color[1], color[2], 224, HitboxThickness, overlay, light,
+					camera);
 		}
 	}
 
 	private void addBoxOutline(VertexConsumer bufferBuilder, Matrix4f matrix, AABB box, int r, int g, int b, int a,
-			float thickness, Camera camera) {
+			float thickness, int overlay, int light, Camera camera) {
 		float minX = (float) box.minX;
 		float minY = (float) box.minY;
 		float minZ = (float) box.minZ;
@@ -172,29 +169,41 @@ public class ProjectilesMixin {
 		float maxZ = (float) box.maxZ;
 
 		// Bottom
-		addLine(bufferBuilder, matrix, minX, minY, minZ, maxX, minY, minZ, r, g, b, a, thickness, camera);
-		addLine(bufferBuilder, matrix, maxX, minY, minZ, maxX, minY, maxZ, r, g, b, a, thickness, camera);
-		addLine(bufferBuilder, matrix, maxX, minY, maxZ, minX, minY, maxZ, r, g, b, a, thickness, camera);
-		addLine(bufferBuilder, matrix, minX, minY, maxZ, minX, minY, minZ, r, g, b, a, thickness, camera);
+		addLine(bufferBuilder, matrix, minX, minY, minZ, maxX, minY, minZ, r, g, b, a, thickness, overlay, light,
+				camera);
+		addLine(bufferBuilder, matrix, maxX, minY, minZ, maxX, minY, maxZ, r, g, b, a, thickness, overlay, light,
+				camera);
+		addLine(bufferBuilder, matrix, maxX, minY, maxZ, minX, minY, maxZ, r, g, b, a, thickness, overlay, light,
+				camera);
+		addLine(bufferBuilder, matrix, minX, minY, maxZ, minX, minY, minZ, r, g, b, a, thickness, overlay, light,
+				camera);
 
 		// Top
-		addLine(bufferBuilder, matrix, minX, maxY, minZ, maxX, maxY, minZ, r, g, b, a, thickness, camera);
-		addLine(bufferBuilder, matrix, maxX, maxY, minZ, maxX, maxY, maxZ, r, g, b, a, thickness, camera);
-		addLine(bufferBuilder, matrix, maxX, maxY, maxZ, minX, maxY, maxZ, r, g, b, a, thickness, camera);
-		addLine(bufferBuilder, matrix, minX, maxY, maxZ, minX, maxY, minZ, r, g, b, a, thickness, camera);
+		addLine(bufferBuilder, matrix, minX, maxY, minZ, maxX, maxY, minZ, r, g, b, a, thickness, overlay, light,
+				camera);
+		addLine(bufferBuilder, matrix, maxX, maxY, minZ, maxX, maxY, maxZ, r, g, b, a, thickness, overlay, light,
+				camera);
+		addLine(bufferBuilder, matrix, maxX, maxY, maxZ, minX, maxY, maxZ, r, g, b, a, thickness, overlay, light,
+				camera);
+		addLine(bufferBuilder, matrix, minX, maxY, maxZ, minX, maxY, minZ, r, g, b, a, thickness, overlay, light,
+				camera);
 
 		// Verticals
-		addLine(bufferBuilder, matrix, minX, minY, minZ, minX, maxY, minZ, r, g, b, a, thickness, camera);
-		addLine(bufferBuilder, matrix, maxX, minY, minZ, maxX, maxY, minZ, r, g, b, a, thickness, camera);
-		addLine(bufferBuilder, matrix, maxX, minY, maxZ, maxX, maxY, maxZ, r, g, b, a, thickness, camera);
-		addLine(bufferBuilder, matrix, minX, minY, maxZ, minX, maxY, maxZ, r, g, b, a, thickness, camera);
+		addLine(bufferBuilder, matrix, minX, minY, minZ, minX, maxY, minZ, r, g, b, a, thickness, overlay, light,
+				camera);
+		addLine(bufferBuilder, matrix, maxX, minY, minZ, maxX, maxY, minZ, r, g, b, a, thickness, overlay, light,
+				camera);
+		addLine(bufferBuilder, matrix, maxX, minY, maxZ, maxX, maxY, maxZ, r, g, b, a, thickness, overlay, light,
+				camera);
+		addLine(bufferBuilder, matrix, minX, minY, maxZ, minX, maxY, maxZ, r, g, b, a, thickness, overlay, light,
+				camera);
 	}
 
 	private void addLine(VertexConsumer bufferBuilder, Matrix4f matrix, float x1, float y1, float z1, float x2,
 			float y2,
-			float z2, int r, int g, int b, int a, float thickness, Camera camera) {
+			float z2, int r, int g, int b, int a, float thickness, int overlay, int light, Camera camera) {
 		addTrajectorySegment(bufferBuilder, matrix, new Vec3(x1, y1, z1), new Vec3(x2, y2, z2), thickness, r, g, b, a,
-				camera);
+				overlay, light, camera);
 	}
 
 	private void addTrajectorySegment(
@@ -207,6 +216,8 @@ public class ProjectilesMixin {
 			int g,
 			int b,
 			int a,
+			int overlay,
+			int light,
 			Camera camera) {
 
 		Vec3 dir = to.subtract(from);
@@ -236,15 +247,19 @@ public class ProjectilesMixin {
 
 		Vec3 extend = dir.scale(thickness * 0.5f);
 
-		Vec3 p0 = from.subtract(extend).subtract(perp);
-		Vec3 p1 = from.subtract(extend).add(perp);
+		Vec3 p0 = from.subtract(extend).subtract(perp).subtract(camPos);
+		Vec3 p1 = from.subtract(extend).add(perp).subtract(camPos);
 
-		Vec3 p2 = to.add(extend).add(perp);
-		Vec3 p3 = to.add(extend).subtract(perp);
+		Vec3 p2 = to.add(extend).add(perp).subtract(camPos);
+		Vec3 p3 = to.add(extend).subtract(perp).subtract(camPos);
 
-		builder.addVertex(matrix, (float) p0.x, (float) p0.y, (float) p0.z).setColor(r, g, b, a);
-		builder.addVertex(matrix, (float) p1.x, (float) p1.y, (float) p1.z).setColor(r, g, b, a);
-		builder.addVertex(matrix, (float) p2.x, (float) p2.y, (float) p2.z).setColor(r, g, b, a);
-		builder.addVertex(matrix, (float) p3.x, (float) p3.y, (float) p3.z).setColor(r, g, b, a);
+		builder.addVertex(matrix, (float) p0.x, (float) p0.y, (float) p0.z).setColor(r, g, b, a).setUv(0, 0)
+				.setOverlay(overlay).setLight(light).setNormal(0, 1, 0);
+		builder.addVertex(matrix, (float) p1.x, (float) p1.y, (float) p1.z).setColor(r, g, b, a).setUv(0, 1)
+				.setOverlay(overlay).setLight(light).setNormal(0, 1, 0);
+		builder.addVertex(matrix, (float) p2.x, (float) p2.y, (float) p2.z).setColor(r, g, b, a).setUv(1, 1)
+				.setOverlay(overlay).setLight(light).setNormal(0, 1, 0);
+		builder.addVertex(matrix, (float) p3.x, (float) p3.y, (float) p3.z).setColor(r, g, b, a).setUv(1, 0)
+				.setOverlay(overlay).setLight(light).setNormal(0, 1, 0);
 	}
 }
